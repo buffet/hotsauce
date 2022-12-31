@@ -18,7 +18,7 @@ pub struct Regex {
 #[derive(Debug)]
 pub struct Matches<'r, Haystack: Iterator<Item = u8>> {
     haystack: Enumerate<Haystack>,
-    regex: &'r mut Regex,
+    regex: &'r Regex,
 }
 
 impl Regex {
@@ -39,7 +39,7 @@ impl Regex {
 }
 
 impl<Haystack: Iterator<Item = u8>> Matches<'_, Haystack> {
-    fn new(regex: &mut Regex, haystack: Haystack) -> Matches<Haystack> {
+    fn new(regex: &Regex, haystack: Haystack) -> Matches<Haystack> {
         Matches {
             haystack: haystack.enumerate(),
             regex,
