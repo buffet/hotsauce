@@ -1,0 +1,21 @@
+[package]
+name = "hotsauce"
+version = "0.0.0"
+edition = "2021"
+description = "Regex search over iterators"
+authors = ["Niclas Meyer <niclas@countingsort.com>"]
+exclude = ["/deny.toml", "/flake.lock", "/flake.nix"]
+homepage = "https://github.com/buffet/hotsauce"
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/buffet/hotsauce"
+
+[lib]
+doctest = false
+test = false
+
+[dependencies]
+itertools = { version = "0.10.5", default-features = false, features = ["use_std"] }
+regex-automata = { version = "0.1.10", default-features = false, features = ["std"] }
+
+[dev-dependencies]
+expect-test = { version = "1.4.0", default-features = false }
