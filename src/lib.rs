@@ -30,10 +30,7 @@ impl Regex {
     }
 
     /// Returns an iterator over the matches.
-    pub fn matches<Haystack: Iterator<Item = u8>>(
-        &mut self,
-        haystack: Haystack,
-    ) -> Matches<Haystack> {
+    pub fn matches<Haystack: Iterator<Item = u8>>(&self, haystack: Haystack) -> Matches<Haystack> {
         Matches::new(self, haystack)
     }
 }
