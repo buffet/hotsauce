@@ -2,7 +2,7 @@
 //! Why can't Rust users stop hardcoding `&str` everywhere?
 #![warn(missing_docs, unreachable_pub)]
 
-use std::{iter::Enumerate, ops::Range};
+use std::{iter::Enumerate, ops::Range, convert::TryFrom};
 
 use regex_automata::{dense, DenseDFA, DFA};
 
@@ -63,6 +63,14 @@ impl Regex {
     /// ```
     pub fn rmatches<Haystack: Iterator<Item = u8>>(&self, haystack: Haystack) -> Matches<Haystack> {
         Matches::new(&self.bw, haystack)
+    }
+}
+
+impl TryFrom<&str> for Regex {
+    type Error = Error;
+
+    fn try_from(str: &str) -> Result<Self, Self::Error> {
+        Regex::new(str)
     }
 }
 
