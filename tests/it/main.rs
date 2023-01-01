@@ -1,5 +1,5 @@
 use expect_test::{expect, Expect};
-use hotsauce::Regex;
+use hotsauce::{Regex, RegexBuilder};
 
 mod external;
 
@@ -93,6 +93,27 @@ fn search_backwards_from_end() {
     let actual = Regex::new(pat)
         .unwrap()
         .rmatches(hay.bytes().rev())
+        .collect::<Vec<_>>();
+
+    expect.assert_debug_eq(&actual);
+}
+
+#[test]
+fn case_insensitive() {
+    let pat = "hello";
+    let hay = "HeLlO";
+
+    let expect = expect![[r#"
+        [
+            0..5,
+        ]
+    "#]];
+
+    let actual = RegexBuilder::new()
+        .case_insensitive(true)
+        .build(pat)
+        .unwrap()
+        .matches(hay.bytes())
         .collect::<Vec<_>>();
 
     expect.assert_debug_eq(&actual);
