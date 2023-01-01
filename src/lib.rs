@@ -1,4 +1,4 @@
-//! Regex search over iterators of bypes.
+//! Regex search over iterators of bytes.
 //! Why can't Rust users stop hardcoding `&str` everywhere?
 #![warn(missing_docs, unreachable_pub)]
 
@@ -19,16 +19,17 @@ pub struct Regex {
 
 /// A builder for a regex from a string.
 /// This allows several configuration options, such as unicode support and case sensitivity.
-/// For basically all of these options, see regex_automata::dense::Builder.
+/// For basically all of these options, see [regex_automata::dense::Builder].
 ///
 /// ```rust
 /// use hotsauce::RegexBuilder;
 ///
 /// let regex = RegexBuilder::new()
 ///     .case_insensitive(true)
-///     .build("hello");
-/// let match = regex.matches("HeLlO".bytes()).next();
-/// assert_eq!(Some(0..5), match);
+///     .build("hello")
+///     .unwrap();
+/// let mat = regex.matches("HeLlO".bytes()).next();
+/// assert_eq!(Some(0..5), mat);
 /// ````
 #[derive(Debug, Clone)]
 pub struct RegexBuilder(dense::Builder);
@@ -41,7 +42,7 @@ pub struct Matches<'r, Haystack: Iterator<Item = u8>> {
 }
 
 impl Regex {
-    /// Build a new regex from the given string with default settings (see RegexBuilder).
+    /// Build a new regex from the given string with default settings (see [RegexBuilder]).
     /// This uses `regex-syntax`, see that for more documentation.
     pub fn new(re: &str) -> Result<Regex, Error> {
         RegexBuilder::new().build(re)
@@ -52,9 +53,9 @@ impl Regex {
     /// ```rust
     /// use hotsauce::Regex;
     ///
-    /// let regex = Regex::new("hey");
-    /// let match = regex.matches("abc hey".bytes()).next();
-    /// assert_eq!(Some(4..7), match);
+    /// let regex = Regex::new("hey").unwrap();
+    /// let mat = regex.matches("abc hey".bytes()).next();
+    /// assert_eq!(Some(4..7), mat);
     /// ```
     pub fn matches<Haystack: Iterator<Item = u8>>(&self, haystack: Haystack) -> Matches<Haystack> {
         Matches::new(&self.fw, haystack)
@@ -62,14 +63,14 @@ impl Regex {
 
     /// Returns an iterator over the matches, searching backwards.
     /// The iterator needs to go backwards.
-    /// The matches returned will be indeces into the iterator, see the example.
+    /// The matches returned will be indices into the iterator, see the example.
     ///
     /// ```rust
     /// use hotsauce::Regex;
     ///
-    /// let regex = Regex::new("hey");
-    /// let match = regex.rmatches("hey abc".bytes().rev()).next();
-    /// assert_eq!(Some(4..7), match);
+    /// let regex = Regex::new("hey").unwrap();
+    /// let mat = regex.rmatches("hey abc".bytes().rev()).next();
+    /// assert_eq!(Some(4..7), mat);
     /// ```
     pub fn rmatches<Haystack: Iterator<Item = u8>>(&self, haystack: Haystack) -> Matches<Haystack> {
         Matches::new(&self.bw, haystack)
@@ -85,7 +86,7 @@ impl TryFrom<&str> for Regex {
 }
 
 impl RegexBuilder {
-    /// Create a new Regex builder.
+    /// Create a new [Regex] builder.
     pub fn new() -> RegexBuilder {
         let mut builder = dense::Builder::new();
         builder.anchored(true);
