@@ -25,7 +25,8 @@ pub struct Matches<'r, Haystack: Iterator<Item = u8>> {
 }
 
 impl Regex {
-    /// Build a new regex.
+    /// Build a new regex from the given string.
+    /// This uses `regex-syntax`, see that for more documentation.
     pub fn new(re: &str) -> Result<Regex, Error> {
         Ok(Regex {
             fw: dense::Builder::new().anchored(true).build(re)?,
@@ -37,12 +38,29 @@ impl Regex {
     }
 
     /// Returns an iterator over the matches.
+    ///
+    /// ```rust
+    /// use hotsauce::Regex;
+    ///
+    /// let regex = Regex::new("hey");
+    /// let match = regex.matches("abc hey".bytes()).next();
+    /// assert_eq!(Some(4..7), match);
+    /// ```
     pub fn matches<Haystack: Iterator<Item = u8>>(&self, haystack: Haystack) -> Matches<Haystack> {
         Matches::new(&self.fw, haystack)
     }
 
     /// Returns an iterator over the matches, searching backwards.
     /// The iterator needs to go backwards.
+    /// The matches returned will be indeces into the iterator, see the example.
+    ///
+    /// ```rust
+    /// use hotsauce::Regex;
+    ///
+    /// let regex = Regex::new("hey");
+    /// let match = regex.rmatches("hey abc".bytes().rev()).next();
+    /// assert_eq!(Some(4..7), match);
+    /// ```
     pub fn rmatches<Haystack: Iterator<Item = u8>>(&self, haystack: Haystack) -> Matches<Haystack> {
         Matches::new(&self.bw, haystack)
     }
