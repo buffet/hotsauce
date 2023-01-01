@@ -77,3 +77,23 @@ fn overlapping() {
 
     check(pat, hay, expect);
 }
+
+#[test]
+fn search_backwards_from_end() {
+    let pat = "hey";
+    let hay = "hey hey";
+
+    let expect = expect![[r#"
+        [
+            0..3,
+            4..7,
+        ]
+    "#]];
+
+    let actual = Regex::new(pat)
+        .unwrap()
+        .rmatches(hay.bytes().rev())
+        .collect::<Vec<_>>();
+
+    expect.assert_debug_eq(&actual);
+}
