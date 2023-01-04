@@ -2,11 +2,7 @@
 //! Why can't Rust users stop hardcoding `&str` everywhere?
 #![warn(missing_docs, unreachable_pub)]
 
-use std::{
-    convert::TryFrom,
-    iter::{Enumerate, Peekable},
-    ops::Range,
-};
+use std::{convert::TryFrom, iter::Peekable, ops::Range};
 
 use regex_automata::{dense, DenseDFA, DFA};
 
@@ -41,8 +37,10 @@ pub struct RegexBuilder(dense::Builder);
 /// An iterator over the (non-overlapping) matches.
 #[derive(Debug)]
 pub struct Matches<'r, Haystack: Iterator<Item = u8>> {
-    haystack: Peekable<Enumerate<Haystack>>,
+    haystack: Peekable<Haystack>,
     dfa: &'r Automata,
+    next_index: usize,
+    needs_advance: bool,
 }
 
 impl Regex {
@@ -183,8 +181,10 @@ impl Default for RegexBuilder {
 impl<Haystack: Iterator<Item = u8>> Matches<'_, Haystack> {
     fn new(dfa: &Automata, haystack: Haystack) -> Matches<Haystack> {
         Matches {
-            haystack: haystack.enumerate().peekable(),
+            haystack: haystack.peekable(),
             dfa,
+            next_index: 0,
+            needs_advance: false,
         }
     }
 }
@@ -192,17 +192,18 @@ impl<Haystack: Iterator<Item = u8>> Matches<'_, Haystack> {
 impl<Haystack: Iterator<Item = u8>> Matches<'_, Haystack> {
     /// Used to consume the rest of the match once found.
     /// This assumes state to be a matching state already.
-    fn match_remaining(&mut self, mut state: usize, start: usize, mut end: usize) -> Range<usize> {
-        while let Some((i, b)) = self.haystack.peek().cloned() {
+    fn match_remaining(&mut self, mut state: usize, start: usize) -> Range<usize> {
+        while let Some(b) = self.haystack.peek().cloned() {
             state = unsafe { self.dfa.next_state_unchecked(state, b) };
             if !self.dfa.is_match_state(state) {
-                return start..i;
+                return start..self.next_index;
             }
-            end = i + 1;
+
+            self.next_index += 1;
             self.haystack.next();
         }
 
-        start..end
+        start..self.next_index
     }
 }
 
@@ -210,6 +211,12 @@ impl<Haystack: Iterator<Item = u8>> Iterator for Matches<'_, Haystack> {
     type Item = Range<usize>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.needs_advance {
+            self.haystack.next()?;
+            self.next_index += 1;
+            self.needs_advance = false;
+        }
+
         let dfa = self.dfa;
         let start_state = dfa.start_state();
 
@@ -218,27 +225,23 @@ impl<Haystack: Iterator<Item = u8>> Iterator for Matches<'_, Haystack> {
         }
 
         if dfa.is_match_state(start_state) {
-            if let Some((start, _)) = self.haystack.peek().cloned() {
-                let mat = self.match_remaining(start_state, start, start);
-                if mat.start == mat.end {
-                    // advance on empty matches
-                    self.haystack.next();
-                }
-                return Some(mat);
-            } else {
-                return None;
+            let mat = self.match_remaining(start_state, self.next_index);
+            if mat.start == mat.end {
+                self.needs_advance = true;
             }
+            return Some(mat);
         }
 
         let mut states = vec![];
 
-        while let Some((i, b)) = self.haystack.next() {
-            states.push((i, start_state));
+        while let Some(b) = self.haystack.next() {
+            states.push((self.next_index, start_state));
+            self.next_index += 1;
 
             for (start, state) in &mut states {
                 *state = unsafe { dfa.next_state_unchecked(*state, b) };
                 if dfa.is_match_state(*state) {
-                    return Some(self.match_remaining(*state, *start, i + 1));
+                    return Some(self.match_remaining(*state, *start));
                 }
             }
 
