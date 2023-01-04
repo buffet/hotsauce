@@ -50,6 +50,36 @@ fn single_match() {
 }
 
 #[test]
+fn match_at_end() {
+    let pat = "hey";
+    let hay = " hey";
+
+    let expect = expect![[r#"
+        [
+            1..4,
+        ]
+    "#]];
+
+    check(pat, hay, expect);
+}
+
+#[test]
+fn empty_matches() {
+    let pat = "";
+    let hay = "abc";
+
+    let expect = expect![[r#"
+        [
+            0..0,
+            1..1,
+            2..2,
+        ]
+    "#]];
+
+    check(pat, hay, expect);
+}
+
+#[test]
 fn multi_match() {
     let pat = "hey";
     let hay = "hey hey";
@@ -58,6 +88,21 @@ fn multi_match() {
         [
             0..3,
             4..7,
+        ]
+    "#]];
+
+    check(pat, hay, expect);
+}
+
+#[test]
+fn back_to_back_matches() {
+    let pat = "hey";
+    let hay = "heyhey";
+
+    let expect = expect![[r#"
+        [
+            0..3,
+            3..6,
         ]
     "#]];
 
