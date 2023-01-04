@@ -1,6 +1,6 @@
 [package]
 name = "hotsauce"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Regex search over iterators"
 authors = ["Niclas Meyer <niclas@countingsort.com>"]
