@@ -2,7 +2,11 @@
 //! Why can't Rust users stop hardcoding `&str` everywhere?
 #![warn(missing_docs, unreachable_pub)]
 
-use std::{convert::TryFrom, iter::Enumerate, ops::Range};
+use std::{
+    convert::TryFrom,
+    iter::{Enumerate, Peekable},
+    ops::Range,
+};
 
 use regex_automata::{dense, DenseDFA, DFA};
 
@@ -37,7 +41,7 @@ pub struct RegexBuilder(dense::Builder);
 /// An iterator over the (non-overlapping) matches.
 #[derive(Debug)]
 pub struct Matches<'r, Haystack: Iterator<Item = u8>> {
-    haystack: Enumerate<Haystack>,
+    haystack: Peekable<Enumerate<Haystack>>,
     dfa: &'r Automata,
 }
 
@@ -179,9 +183,26 @@ impl Default for RegexBuilder {
 impl<Haystack: Iterator<Item = u8>> Matches<'_, Haystack> {
     fn new(dfa: &Automata, haystack: Haystack) -> Matches<Haystack> {
         Matches {
-            haystack: haystack.enumerate(),
+            haystack: haystack.enumerate().peekable(),
             dfa,
         }
+    }
+}
+
+impl<Haystack: Iterator<Item = u8>> Matches<'_, Haystack> {
+    /// Used to consume the rest of the match once found.
+    /// This assumes state to be a matching state already.
+    fn match_remaining(&mut self, mut state: usize, start: usize, mut end: usize) -> Range<usize> {
+        while let Some((i, b)) = self.haystack.peek().cloned() {
+            state = unsafe { self.dfa.next_state_unchecked(state, b) };
+            if !self.dfa.is_match_state(state) {
+                return start..i;
+            }
+            end = i + 1;
+            self.haystack.next();
+        }
+
+        start..end
     }
 }
 
@@ -196,33 +217,32 @@ impl<Haystack: Iterator<Item = u8>> Iterator for Matches<'_, Haystack> {
             return None;
         }
 
+        if dfa.is_match_state(start_state) {
+            if let Some((start, _)) = self.haystack.peek().cloned() {
+                let mat = self.match_remaining(start_state, start, start);
+                if mat.start == mat.end {
+                    // advance on empty matches
+                    self.haystack.next();
+                }
+                return Some(mat);
+            } else {
+                return None;
+            }
+        }
+
         let mut states = vec![];
 
         while let Some((i, b)) = self.haystack.next() {
-            let end = dfa.is_match_state(start_state).then_some(i);
-            states.push((i, end, start_state));
+            states.push((i, start_state));
 
-            for (start, end, state) in &mut states {
+            for (start, state) in &mut states {
                 *state = unsafe { dfa.next_state_unchecked(*state, b) };
-                if dfa.is_dead_state(*state) {
-                    match end {
-                        Some(end) => return Some(*start..*end + 1),
-                        None => continue,
-                    }
-                }
                 if dfa.is_match_state(*state) {
-                    *end = Some(i);
+                    return Some(self.match_remaining(*state, *start, i + 1));
                 }
             }
 
-            states.retain(|&(_, _, state)| !dfa.is_dead_state(state));
-        }
-
-        for (start, end, _) in states.iter().cloned() {
-            match end {
-                Some(end) => return Some(start..end + 1),
-                None => {}
-            }
+            states.retain(|&(_, state)| !dfa.is_dead_state(state));
         }
 
         None
